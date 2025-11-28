@@ -26,5 +26,18 @@
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if this bash command is attempting a git commit. The command arguments are: $ARGUMENTS\n\nIf the command contains 'git commit' (as a bash command that runs git with commit argument), respond with exactly: BLOCKED_GIT_COMMIT\n\nOtherwise, respond with: OK"
+          }
+        ]
+      }
+    ]
   }
 }
