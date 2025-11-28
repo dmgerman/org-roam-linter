@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(python3:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:orgparse.readthedocs.io)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(pip install:*)",
+      "Bash(/tmp/empty_filelist.txt)",
+      "Bash(tree:*)",
+      "Bash(! grep -q \"Victoria, BC\" status.html)",
+      "Bash(cat:*)",
+      "Bash(sqlite3:*)",
+      "Bash(/Users/dmg/git.dmg/dmg-status/scriptA)",
+      "Bash(test:*)",
+      "Bash(__NEW_LINE__ echo \"✓ Final validation:\" echo \"\" echo \"1. All tests pass:\" python3 -m pytest todos/test_org_todos.py -q)",
+      "Bash(1)",
+      "Bash(__NEW_LINE__ echo \"✅ Final Validation:\" echo \"\" echo \"1. All tests pass:\" python3 -m pytest todos/test_org_todos.py -q)",
+      "Bash(__NEW_LINE__ echo \"Test 1: With triple quotes (current format):\" sqlite3 ~/.config-dmg/org-roam.db \"select count(*) from dmg_headers where scheduled < ''''''''''''2025-11-27'''';\")",
+      "Bash(echo \"\" echo \"Test 2: With double quotes:\" sqlite3 ~/.config-dmg/org-roam.db 'select count(*) from dmg_headers where scheduled < \"\"\"\"'\"''''\"'2025-11-27\"\"\"\";')",
+      "Bash(echo \"\" echo \"Test 3: With single quote wrapper (just the date):\" sqlite3 ~/.config-dmg/org-roam.db \"select count(*) from dmg_headers where scheduled < ''''2025-11-27'''';\")",
+      "Bash(tail -1 echo \"\" echo \"2. Query shows placeholders (not substituted):\" python3 todos/org-todos.py --debug)",
+      "Bash(pytest:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
