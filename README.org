@@ -1,0 +1,131 @@
+#+TITLE: Org-Linter
+#+AUTHOR: Org-Linter Contributors
+
+* Overview
+
+Org-linter is a tool for scanning and analyzing your org-mode files. It helps you identify potential issues like duplicate IDs and provides summaries of tags used across your knowledge base.
+
+* Installation
+
+** Requirements
+- Python 3.7 or later
+- orgparse library
+
+** Setup
+1. Clone or download this repository
+2. Install dependencies:
+   #+BEGIN_SRC bash
+   pip install orgparse
+   #+END_SRC
+
+* Usage
+
+** Basic Command
+To scan a directory for org files:
+
+#+BEGIN_SRC bash
+./org-linter.py ~/path/to/org/files
+#+END_SRC
+
+You can scan multiple directories:
+
+#+BEGIN_SRC bash
+./org-linter.py ~/notes ~/research ~/projects
+#+END_SRC
+
+** Features
+
+*** Duplicate ID Detection
+Find org-ids that appear in multiple places across your files:
+
+#+BEGIN_SRC bash
+./org-linter.py --enable-duplicate-ids ~/notes
+#+END_SRC
+
+This generates a report showing:
+- Which IDs are duplicated
+- How many files contain each duplicate
+- Exact file locations and byte offsets for each occurrence
+
+*** Tags Summary
+Generate a summary of tags that appear across multiple files:
+
+#+BEGIN_SRC bash
+./org-linter.py --enable-tags-summary ~/notes
+#+END_SRC
+
+This shows which tags appear in more than one file in your knowledge base.
+
+*** Debug Mode
+Get detailed output about the scanning process:
+
+#+BEGIN_SRC bash
+./org-linter.py --debug --enable-duplicate-ids ~/notes
+#+END_SRC
+
+This prints diagnostic information to help understand what the tool is doing.
+
+** Combining Options
+Use multiple features together:
+
+#+BEGIN_SRC bash
+./org-linter.py --enable-duplicate-ids --enable-tags-summary ~/notes ~/research
+#+END_SRC
+
+* Understanding the Output
+
+The tool generates an org-mode formatted report with:
+
+- **Files scanned**: Total number of .org files found
+- **IDs found**: Total count of org-ids in your files
+- **Duplicate IDs**: Count of IDs appearing more than once
+- **Repeated IDs section** (if enabled): Table showing each duplicate ID, how many files contain it, total instances, and clickable links to each location
+- **Tags summary** (if enabled): Table showing tags that appear across multiple files
+
+* Use Cases
+
+** Maintaining ID Uniqueness
+Before using org-roam or other tools that rely on unique IDs, run:
+#+BEGIN_SRC bash
+./org-linter.py --enable-duplicate-ids ~/org-roam
+#+END_SRC
+
+This ensures each ID in your knowledge base is unique.
+
+** Understanding Your Knowledge Base
+Get a bird's-eye view of how tags are distributed:
+#+BEGIN_SRC bash
+./org-linter.py --enable-tags-summary ~/notes
+#+END_SRC
+
+** Regular Audits
+Periodically check your org files for issues:
+#+BEGIN_SRC bash
+./org-linter.py --enable-duplicate-ids --enable-tags-summary ~/org-roam
+#+END_SRC
+
+* Supported File Formats
+
+The tool works with standard org-mode files (.org). It recognizes:
+
+- File-level IDs: =#+ID: value= at the top of a file
+- Heading IDs: IDs in :PROPERTIES: drawers under headings
+- Tags: Heading tags in the standard org-mode format (=tag1:tag2:=)
+
+* Tips
+
+- The tool follows symbolic links while scanning directories, but avoids infinite loops
+- Files that fail to parse are reported as warnings but don't stop the scan
+- Output is in org-mode format for easy integration with your note-taking workflow
+- Byte offsets in the output point to the exact location of IDs for easy navigation
+
+* Troubleshooting
+
+** No files found
+Make sure the directory path is correct and contains .org files.
+
+** Permission denied errors
+The tool will skip directories it cannot read. Check file permissions if you're missing expected files.
+
+** Parse errors for specific files
+If a file fails to parse, the tool will report it but continue scanning. Check the file for syntax errors.

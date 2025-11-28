@@ -5,5 +5,7 @@
 git ls-files
 
 ## Read
-CLAUDE.md and README.md 
+- claude.md 
+- README.md and/or README.org
+
 
