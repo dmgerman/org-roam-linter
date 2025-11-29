@@ -789,3 +789,261 @@ def test_duplicate_ids_symlink_subpath_display(temp_dir):
                 # file2.org is nested, so should show subdir/nested/file2.org
                 assert 'subdir' in line or 'nested' in line, \
                     f"Nested file should display with directory structure, got: {line}"
+
+
+# Ignore Directory Tests
+
+def test_parse_arguments_ignore_directory_single():
+    """Test --ignore-directory with single path."""
+    with patch.object(sys, 'argv', ['org-linter', '--ignore-directory', '/tmp/ignore', '/tmp']):
+        args = org_linter.parse_arguments()
+        assert args.ignore_directories == ['/tmp/ignore']
+
+
+def test_parse_arguments_ignore_directory_multiple():
+    """Test --ignore-directory with multiple paths."""
+    with patch.object(sys, 'argv', ['org-linter', '--ignore-directory', '/tmp/ignore1', '--ignore-directory', '/tmp/ignore2', '/tmp']):
+        args = org_linter.parse_arguments()
+        assert args.ignore_directories == ['/tmp/ignore1', '/tmp/ignore2']
+
+
+def test_parse_arguments_ignore_directory_with_other_flags():
+    """Test --ignore-directory combined with other flags."""
+    with patch.object(sys, 'argv', ['org-linter', '--debug', '--enable-duplicate-ids', '--ignore-directory', '/tmp/ignore', '/tmp']):
+        args = org_linter.parse_arguments()
+        assert args.debug is True
+        assert args.enable_duplicate_ids is True
+        assert args.ignore_directories == ['/tmp/ignore']
+
+
+def test_find_org_files_ignores_directory(temp_dir):
+    """Test that specified directories are ignored."""
+    # Create directory structure
+    include_dir = temp_dir / "include"
+    ignore_dir = temp_dir / "ignore"
+    include_dir.mkdir()
+    ignore_dir.mkdir()
+
+    # Create org files in both directories
+    (include_dir / "file1.org").write_text("#+TITLE: Include\n")
+    (ignore_dir / "file2.org").write_text("#+TITLE: Ignore\n")
+
+    # Find files without ignore
+    all_files = org_linter.find_org_files([temp_dir])
+    assert len(all_files) == 2
+
+    # Find files with ignore
+    files = org_linter.find_org_files([temp_dir], [ignore_dir])
+    assert len(files) == 1
+    assert any(f.name == "file1.org" for f in files)
+    assert not any(f.name == "file2.org" for f in files)
+
+
+def test_find_org_files_ignores_multiple_directories(temp_dir):
+    """Test ignoring multiple directories."""
+    dir1 = temp_dir / "dir1"
+    dir2 = temp_dir / "dir2"
+    dir3 = temp_dir / "dir3"
+    dir1.mkdir()
+    dir2.mkdir()
+    dir3.mkdir()
+
+    (dir1 / "file1.org").write_text("#+TITLE: File 1\n")
+    (dir2 / "file2.org").write_text("#+TITLE: File 2\n")
+    (dir3 / "file3.org").write_text("#+TITLE: File 3\n")
+
+    files = org_linter.find_org_files([temp_dir], [dir1, dir2])
+    assert len(files) == 1
+    assert any(f.name == "file3.org" for f in files)
+    assert not any(f.name == "file1.org" for f in files)
+    assert not any(f.name == "file2.org" for f in files)
+
+
+def test_find_org_files_ignores_nested_directory(temp_dir):
+    """Test that nested ignored directories are also skipped."""
+    parent = temp_dir / "parent"
+    child = parent / "child"
+    parent.mkdir()
+    child.mkdir()
+
+    (parent / "file1.org").write_text("#+TITLE: Parent\n")
+    (child / "file2.org").write_text("#+TITLE: Child\n")
+
+    files = org_linter.find_org_files([temp_dir], [child])
+    assert len(files) == 1
+    assert any(f.name == "file1.org" for f in files)
+    assert not any(f.name == "file2.org" for f in files)
+
+
+def test_find_org_files_absolute_path_ignore(temp_dir):
+    """Test ignoring with absolute path."""
+    ignore_dir = temp_dir / "ignore"
+    include_dir = temp_dir / "include"
+    ignore_dir.mkdir()
+    include_dir.mkdir()
+
+    (ignore_dir / "file1.org").write_text("#+TITLE: Ignore\n")
+    (include_dir / "file2.org").write_text("#+TITLE: Include\n")
+
+    # Use absolute resolved path
+    files = org_linter.find_org_files([temp_dir], [ignore_dir.resolve()])
+    assert len(files) == 1
+    assert any(f.name == "file2.org" for f in files)
+
+
+def test_find_org_files_relative_path_ignore(temp_dir):
+    """Test ignoring with relative path."""
+    ignore_dir = temp_dir / "ignore"
+    include_dir = temp_dir / "include"
+    ignore_dir.mkdir()
+    include_dir.mkdir()
+
+    (ignore_dir / "file1.org").write_text("#+TITLE: Ignore\n")
+    (include_dir / "file2.org").write_text("#+TITLE: Include\n")
+
+    # Create relative path from temp_dir
+    import os
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(temp_dir)
+        files = org_linter.find_org_files([Path('.')], [Path('ignore')])
+        assert len(files) == 1
+        assert any(f.name == "file2.org" for f in files)
+    finally:
+        os.chdir(old_cwd)
+
+
+def test_find_org_files_ignores_symlink_by_symlink_path(temp_dir):
+    """Test ignoring directory when specified as symlink path."""
+    real_dir = temp_dir / "real"
+    symlink_dir = temp_dir / "symlink"
+    real_dir.mkdir()
+    symlink_dir.symlink_to(real_dir)
+
+    (real_dir / "file.org").write_text("#+TITLE: File\n")
+
+    # Ignore using the symlink path
+    files = org_linter.find_org_files([temp_dir], [symlink_dir])
+    # Should not find the file because symlink_dir resolves to real_dir
+    assert not any(f.name == "file.org" for f in files)
+
+
+def test_find_org_files_ignores_symlink_by_target_path(temp_dir):
+    """Test ignoring when specifying the actual target directory."""
+    real_dir = temp_dir / "real"
+    symlink_dir = temp_dir / "symlink"
+    real_dir.mkdir()
+    symlink_dir.symlink_to(real_dir)
+
+    (real_dir / "file.org").write_text("#+TITLE: File\n")
+
+    # Ignore using the real directory path
+    files = org_linter.find_org_files([temp_dir], [real_dir])
+    # Should not find the file because real_dir is ignored
+    assert not any(f.name == "file.org" for f in files)
+
+
+def test_find_org_files_ignores_target_when_accessed_via_symlink(temp_dir):
+    """Test that target is ignored even when accessed via symlink."""
+    real_dir = temp_dir / "real"
+    symlink_dir = temp_dir / "symlink"
+    real_dir.mkdir()
+    symlink_dir.symlink_to(real_dir)
+
+    (real_dir / "file.org").write_text("#+TITLE: File\n")
+
+    # Search through symlink but ignore the real path
+    files = org_linter.find_org_files([symlink_dir], [real_dir.resolve()])
+    # Should not find file because the real path is ignored
+    assert not any(f.name == "file.org" for f in files)
+
+
+def test_find_org_files_ignores_symlink_path_when_accessed_as_real(temp_dir):
+    """Test that symlink is ignored when accessed as real path."""
+    real_dir = temp_dir / "real"
+    symlink_dir = temp_dir / "symlink"
+    real_dir.mkdir()
+    symlink_dir.symlink_to(real_dir)
+
+    (real_dir / "file.org").write_text("#+TITLE: File\n")
+
+    # Search through real directory but ignore the symlink path
+    files = org_linter.find_org_files([real_dir], [symlink_dir.resolve()])
+    # Should not find file because symlink resolves to real_dir
+    assert not any(f.name == "file.org" for f in files)
+
+
+def test_find_org_files_partial_path_no_match(temp_dir):
+    """Test that partial paths don't match."""
+    parent = temp_dir / "parent"
+    child = parent / "child"
+    parent.mkdir()
+    child.mkdir()
+
+    (parent / "file1.org").write_text("#+TITLE: Parent\n")
+    (child / "file2.org").write_text("#+TITLE: Child\n")
+
+    # Ignore with a name that partially matches but isn't the full path
+    partial_ignore = temp_dir / "par"
+    files = org_linter.find_org_files([temp_dir], [partial_ignore])
+    # Should find both files because "par" doesn't resolve to an actual path
+    assert len(files) == 2
+
+
+def test_find_org_files_ignore_doesnt_affect_base_dir(temp_dir):
+    """Test that ignoring a directory doesn't affect base directory scanning."""
+    subdir = temp_dir / "subdir"
+    subdir.mkdir()
+
+    (temp_dir / "file1.org").write_text("#+TITLE: Base\n")
+    (subdir / "file2.org").write_text("#+TITLE: Sub\n")
+
+    # Ignore a non-existent subdirectory - should still find files in base dir
+    files = org_linter.find_org_files([temp_dir], [temp_dir / "other"])
+    assert len(files) == 2
+    assert any(f.name == "file1.org" for f in files)
+
+
+def test_main_with_ignore_directory(temp_dir):
+    """Test main() function with --ignore-directory."""
+    ignore_dir = temp_dir / "ignore"
+    include_dir = temp_dir / "include"
+    ignore_dir.mkdir()
+    include_dir.mkdir()
+
+    (ignore_dir / "ignored.org").write_text("* H\n:PROPERTIES:\n:ID: dup-id\n:END:\n")
+    (include_dir / "included.org").write_text("* H\n:PROPERTIES:\n:ID: dup-id\n:END:\n* H2\n:PROPERTIES:\n:ID: inc-id\n:END:\n")
+
+    with patch.object(sys, 'argv', ['org-linter', '--enable-duplicate-ids', '--ignore-directory', str(ignore_dir), str(temp_dir)]):
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            org_linter.main()
+            output = fake_out.getvalue()
+            # Should show 1 org file found (only the included one)
+            assert 'Files scanned: 1' in output
+            # Should show only 1 unique ID and no duplicates (dup-id appears only in included.org since ignored is ignored)
+            assert 'IDs found: 2' in output
+            assert 'Duplicate IDs: 0' in output
+
+
+def test_main_with_multiple_base_dirs_and_ignore(temp_dir):
+    """Test main() with multiple base directories and ignore."""
+    base1 = temp_dir / "base1"
+    base2 = temp_dir / "base2"
+    ignore1 = base1 / "ignore"
+    base1.mkdir()
+    base2.mkdir()
+    ignore1.mkdir()
+
+    (base1 / "file1.org").write_text("* H\n:PROPERTIES:\n:ID: id1\n:END:\n")
+    (ignore1 / "file2.org").write_text("* H\n:PROPERTIES:\n:ID: id2\n:END:\n")
+    (base2 / "file3.org").write_text("* H\n:PROPERTIES:\n:ID: id3\n:END:\n")
+
+    with patch.object(sys, 'argv', ['org-linter', '--enable-duplicate-ids', '--ignore-directory', str(ignore1), str(base1), str(base2)]):
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            org_linter.main()
+            output = fake_out.getvalue()
+            # Should show 2 org files found (file1.org and file3.org, not file2.org)
+            assert 'Files scanned: 2' in output
+            # Should show 2 unique IDs (id1 and id3, not id2)
+            assert 'IDs found: 2' in output
+            assert 'Duplicate IDs: 0' in output

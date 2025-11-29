@@ -20,13 +20,38 @@ def setup_logging(debug: bool) -> None:
     )
 
 
-def find_org_files(directories: List[Path]) -> List[Path]:
+def find_org_files(directories: List[Path], ignore_directories: List[Path] = None) -> List[Path]:
     """Recursively find all .org files in given directories, following symlinks while avoiding cycles."""
+    if ignore_directories is None:
+        ignore_directories = []
+
     org_files = []
     visited = set()
 
+    def _should_ignore_directory(directory: Path, ignore_dirs: List[Path]) -> bool:
+        """Check if a directory should be ignored based on resolved paths."""
+        try:
+            directory_resolved = directory.resolve()
+        except (OSError, RuntimeError):
+            return False
+
+        for ignore_dir in ignore_dirs:
+            try:
+                ignore_resolved = ignore_dir.resolve()
+                if directory_resolved == ignore_resolved:
+                    logging.debug(f"Ignoring directory: {directory} (resolved: {directory_resolved})")
+                    return True
+            except (OSError, RuntimeError):
+                continue
+
+        return False
+
     def _find_recursive(directory: Path) -> None:
         """Recursively traverse directory, following symlinks but avoiding infinite loops."""
+        # Check if directory should be ignored
+        if _should_ignore_directory(directory, ignore_directories):
+            return
+
         try:
             # Resolve to real path to detect cycles
             real_path = directory.resolve()
@@ -356,6 +381,15 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        '--ignore-directory',
+        action='append',
+        type=str,
+        default=[],
+        dest='ignore_directories',
+        help='Exclude directories from scanning (can be specified multiple times; supports relative and absolute paths)'
+    )
+
+    parser.add_argument(
         'directories',
         nargs='+',
         type=Path,
@@ -379,8 +413,13 @@ def main() -> None:
             logging.error(f"Directory not found: {directory}")
             sys.exit(1)
 
+    # Convert ignore_directories to Path objects and resolve them
+    ignore_dirs = [Path(d).resolve() for d in args.ignore_directories] if args.ignore_directories else []
+    if ignore_dirs:
+        logging.debug(f"Ignoring directories: {ignore_dirs}")
+
     # Find and parse org files
-    org_files = find_org_files(args.directories)
+    org_files = find_org_files(args.directories, ignore_dirs)
     logging.debug(f"Found {len(org_files)} org files")
 
     if not org_files:

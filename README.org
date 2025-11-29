@@ -65,11 +65,38 @@ Get detailed output about the scanning process:
 
 This prints diagnostic information to help understand what the tool is doing.
 
+*** Excluding Directories
+Exclude specific directories from being scanned using the =--ignore-directory= option:
+
+#+BEGIN_SRC bash
+./org-linter.py --ignore-directory .git ~/notes
+#+END_SRC
+
+You can specify multiple directories to ignore:
+
+#+BEGIN_SRC bash
+./org-linter.py --ignore-directory .git --ignore-directory node_modules ~/notes
+#+END_SRC
+
+The =--ignore-directory= option accepts both relative paths (relative to the current working directory) and absolute paths. This is useful for excluding:
+- Version control directories (=.git=, =.hg=)
+- Build artifacts (=node_modules=, =dist=)
+- Backup directories
+- Any other directories you want to skip
+
+Directories are matched by their resolved real paths, so symlinks are handled correctly in both directions.
+
 ** Combining Options
 Use multiple features together:
 
 #+BEGIN_SRC bash
 ./org-linter.py --enable-duplicate-ids --enable-tags-summary ~/notes ~/research
+#+END_SRC
+
+Or with ignore directories:
+
+#+BEGIN_SRC bash
+./org-linter.py --enable-duplicate-ids --ignore-directory .git --ignore-directory .obsidian ~/org-roam
 #+END_SRC
 
 * Understanding the Output
@@ -118,6 +145,12 @@ The tool works with standard org-mode files (.org). It recognizes:
 - Files that fail to parse are reported as warnings but don't stop the scan
 - Output is in org-mode format for easy integration with your note-taking workflow
 - Byte offsets in the output point to the exact location of IDs for easy navigation
+- Use =--ignore-directory= to skip common non-essential directories:
+  - =.git= - Version control
+  - =.obsidian= - Obsidian vault configuration
+  - =node_modules= - Node.js dependencies
+  - =.venv= or =venv= - Python virtual environments
+  - =.cache= - Cache directories
 
 * Troubleshooting
 
