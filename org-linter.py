@@ -226,13 +226,12 @@ def generate_duplicate_ids_section(all_org_ids: Dict[str, List[Tuple[int, Path]]
         for byte_offset, filepath in sorted(locations, key=lambda x: (str(x[1]), x[0])):
             # Find which base directory this file is under and calculate relative path
             rel_path_str = filepath.name  # Default to filename only
-            abs_filepath = filepath.resolve()  # Resolve both for comparison (works with symlinks)
 
             for base_dir in base_directories:
-                abs_base_dir = base_dir.resolve()
                 try:
-                    # Use resolved absolute paths for relative_to comparison
-                    rel_path = abs_filepath.relative_to(abs_base_dir)
+                    # Use original (non-resolved) paths for relative_to comparison
+                    # This preserves symlink directory names in the display
+                    rel_path = filepath.relative_to(base_dir)
                     rel_path_str = str(rel_path)
                     break
                 except ValueError:

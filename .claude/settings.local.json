@@ -22,7 +22,8 @@
       "Bash(echo \"\" echo \"Test 2: With double quotes:\" sqlite3 ~/.config-dmg/org-roam.db 'select count(*) from dmg_headers where scheduled < \"\"\"\"'\"''''\"'2025-11-27\"\"\"\";')",
       "Bash(echo \"\" echo \"Test 3: With single quote wrapper (just the date):\" sqlite3 ~/.config-dmg/org-roam.db \"select count(*) from dmg_headers where scheduled < ''''2025-11-27'''';\")",
       "Bash(tail -1 echo \"\" echo \"2. Query shows placeholders (not substituted):\" python3 todos/org-todos.py --debug)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)"
     ],
     "deny": [],
     "ask": []

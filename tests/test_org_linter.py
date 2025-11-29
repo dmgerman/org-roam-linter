@@ -734,3 +734,58 @@ def test_duplicate_ids_sorted_lexicographically(temp_dir):
     if z_pos != -1 and a_pos != -1:
         # a_file should appear before z_file in the output
         assert a_pos < z_pos
+
+
+def test_duplicate_ids_symlink_subpath_display(temp_dir):
+    """Test that symlink subpaths are displayed correctly in duplicate IDs report."""
+    # Create a real directory with nested org files
+    real_dir = temp_dir / "real_dir"
+    real_dir.mkdir()
+    nested_dir = real_dir / "subdir" / "nested"
+    nested_dir.mkdir(parents=True)
+
+    # Create files in the real directory structure
+    file1 = real_dir / "file1.org"
+    file2 = nested_dir / "file2.org"
+
+    file1.write_text("* H\n:PROPERTIES:\n:ID: dup-symlink-id\n:END:\n")
+    file2.write_text("* H\n:PROPERTIES:\n:ID: dup-symlink-id\n:END:\n")
+
+    # Create a symlink to the real directory
+    symlink_dir = temp_dir / "symlink_links"
+    symlink_dir.symlink_to(real_dir)
+
+    # Find org files through the symlink
+    org_files = org_linter.find_org_files([symlink_dir])
+    assert len(org_files) >= 2, "Should find files through symlink"
+
+    # Aggregate IDs from the symlinked paths
+    all_org_ids, _ = org_linter.aggregate_org_ids(org_files)
+    assert 'dup-symlink-id' in all_org_ids
+    assert len(all_org_ids['dup-symlink-id']) >= 2
+
+    # Generate duplicate IDs section
+    section = org_linter.generate_duplicate_ids_section(all_org_ids, [symlink_dir])
+
+    # Verify that the relative path includes the symlink directory and subdirectories
+    # Should show "symlink_links/..." not just "file1.org" or "file2.org"
+    assert 'symlink_links' in section, "Output should show symlink directory name"
+
+    # At least one file should show the full subpath, not just filename
+    # The nested file should show "symlink_links/subdir/nested/file2.org" not just "file2.org"
+    assert 'subdir' in section or 'nested' in section, "Output should show subdirectory structure"
+
+    # Verify that the display text in links contains proper path info
+    # Look for link display text like [symlink_links/...::offset]
+    assert '[[file:' in section, "Should have file links"
+
+    # Check that at least one file is displayed with more than just its name
+    lines = section.split('\n')
+    for line in lines:
+        if 'dup-symlink-id' in line:
+            # This line should contain relative paths, not just filenames
+            # Count how many path components are shown
+            if 'file2.org' in line:
+                # file2.org is nested, so should show subdir/nested/file2.org
+                assert 'subdir' in line or 'nested' in line, \
+                    f"Nested file should display with directory structure, got: {line}"

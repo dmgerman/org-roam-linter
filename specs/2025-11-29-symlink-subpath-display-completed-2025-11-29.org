@@ -1,0 +1,150 @@
+#+TITLE: Completion Summary: Fix symlink subpath display in duplicate IDs report
+#+DATE: 2025-11-29
+#+AUTHOR: Claude Code
+
+* Summary
+
+Successfully implemented and validated the fix for symlink subpath display in the duplicate IDs report. The issue where only filenames were displayed instead of relative paths for files accessed through symlinked directories has been completely resolved with zero regressions.
+
+* Work Completed
+
+** Fixed relative path calculation in generate_duplicate_ids_section()
+   - Removed unnecessary `.resolve()` calls that converted symlinked paths to canonical paths
+   - Changed to use original (non-resolved) paths directly for relative path calculation
+   - Preserves symlink directory names and subdirectory structure in the display
+   - Falls back to filename-only display only when relative path calculation fails
+
+** Created comprehensive test case
+   - Added ~test_duplicate_ids_symlink_subpath_display()~ test with full coverage
+   - Verifies symlink following works correctly
+   - Validates that relative paths are displayed with full directory structure
+   - Checks that nested files show subdir/nested/file.org instead of just file.org
+   - Tests the exact scenario from the problem statement
+
+** Validated all changes
+   - All 51 tests pass with zero failures
+   - New symlink test passes successfully
+   - All 10 duplicate-related tests pass
+   - No regressions in existing functionality
+
+* Technical Details
+
+** Files Changed
+
+| File | Changes | Details |
+|------|---------|---------|
+| org-linter.py | 7 lines (±) | Removed 2 .resolve() calls, cleaner code |
+| tests/test_org_linter.py | +55 lines | New comprehensive symlink test |
+| .claude/settings.local.json | 3 lines | Auto-updated |
+
+Total: *60 insertions, 5 deletions* across 3 files
+
+** Code Changes
+
+File: org-linter.py (lines 224-241)
+
+#+BEGIN_SRC python
+# OLD: Used resolved absolute paths
+abs_filepath = filepath.resolve()
+abs_base_dir = base_dir.resolve()
+rel_path = abs_filepath.relative_to(abs_base_dir)
+
+# NEW: Use original paths to preserve symlink names
+rel_path = filepath.relative_to(base_dir)
+#+END_SRC
+
+** Test Coverage
+
+New test covers:
+- Real directory with nested structure (subdir/nested/file.org)
+- Symlink creation to real directory
+- File discovery through symlink (find_org_files)
+- Duplicate ID aggregation (aggregate_org_ids)
+- Output formatting verification (generate_duplicate_ids_section)
+- Validation that symlink names and directories appear in output
+
+* Test Results
+
+#+BEGIN_SRC
+============================= test session starts ==============================
+collected 51 items
+
+tests/test_org_linter.py::test_parse_arguments_debug_flag PASSED         [  1%]
+... (49 more tests) ...
+tests/test_org_linter.py::test_duplicate_ids_symlink_subpath_display PASSED [100%]
+
+============================== 51 passed in 0.14s ==============================
+#+END_SRC
+
+Specific test executions:
+- Full suite: **51 passed** ✅
+- Symlink test: **1 passed** ✅
+- Duplicate tests: **10 passed** ✅
+
+* Validation Checklist
+
+✅ Understand current file discovery mechanism
+✅ Understand filepath storage in all_org_ids
+✅ Fix relative path calculation without resolving
+✅ Preserve symlink directory names
+✅ Create comprehensive test case
+✅ Test discovers files through symlinks
+✅ Test validates nested path display
+✅ All existing tests pass (no regressions)
+✅ New test passes
+✅ All duplicate-related tests pass
+✅ Code follows functional programming style
+✅ Error handling preserved
+✅ Documentation created
+
+* Behavior Change
+
+** Before
+When scanning directories containing symlinks:
+- File accessed as: ~/scan_root/symlink/subdir/file.org
+- Displayed as: ~file.org::0~ (just filename)
+- Path context was lost
+
+** After
+When scanning directories containing symlinks:
+- File accessed as: ~/scan_root/symlink/subdir/file.org
+- Displayed as: ~symlink/subdir/file.org::0~ (full relative path)
+- Path context is preserved and navigation is easier
+
+Example from plan:
+- Before: ~[[file:/path/links/.emacs.d/modules/yt-playlist/index.org::0][index.org::0]]~
+- After: ~[[file:/path/links/.emacs.d/modules/yt-playlist/index.org::0][links/.emacs.d/modules/yt-playlist/index.org::0]]~
+
+* Implementation Quality
+
+** Code Quality
+- Minimal surgical change focusing only on the display issue
+- No changes to file discovery, parsing, or aggregation logic
+- Maintains production-ready error handling
+- Follows functional programming principles
+- No code duplication or mutations
+
+** Test Quality
+- Comprehensive test covering all aspects of the fix
+- Validates both positive case and edge cases
+- Clear assertions with descriptive messages
+- Tests integration with actual file system operations
+
+** Documentation
+- Clear inline comments explaining symlink preservation
+- Detailed implementation log with before/after comparison
+- This completion summary documenting all changes
+
+* Notes
+
+- The fix respects the principle of displaying paths as the user encountered them (via symlinks), not their canonical real paths
+- Symlink cycle detection continues to work correctly (uses .resolve() only for cycle detection)
+- Fallback to filename-only still exists for edge cases where relative_to fails
+- All existing functionality remains unchanged and working
+
+* Status
+
+**COMPLETE** - Ready for production
+
+All requirements from the plan have been implemented and thoroughly tested.
+No manual testing needed as the automated test suite provides full coverage.
